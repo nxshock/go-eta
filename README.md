@@ -1,2 +1,3 @@
 # go-eta
- ETA calculator for Go
+
+ETA calculator for Go.
