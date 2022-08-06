@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-// EtaCalculator represents ETA calculator
-type EtaCalculator struct {
+// Calculator represents ETA calculator
+type Calculator struct {
 	startTime time.Time
 	processed int
 
@@ -22,10 +22,10 @@ type EtaCalculator struct {
 }
 
 // New return new ETA calculator
-func New(periodDuration time.Duration, totalCount int) *EtaCalculator {
+func New(periodDuration time.Duration, totalCount int) *Calculator {
 	now := time.Now()
 
-	etaCalc := &EtaCalculator{
+	etaCalc := &Calculator{
 		startTime:      now,
 		TotalCount:     totalCount,
 		currentPeriod:  now.Truncate(periodDuration),
@@ -35,7 +35,7 @@ func New(periodDuration time.Duration, totalCount int) *EtaCalculator {
 }
 
 // Increment increments processing count
-func (ec *EtaCalculator) Increment(n int) {
+func (ec *Calculator) Increment(n int) {
 	if n <= 0 {
 		return
 	}
@@ -65,7 +65,7 @@ func (ec *EtaCalculator) Increment(n int) {
 }
 
 // Last returns ETA based on last period processing speed
-func (ec *EtaCalculator) Last() time.Time {
+func (ec *Calculator) Last() time.Time {
 	if ec.processed == 0 {
 		return time.Time{}
 	}
@@ -79,7 +79,7 @@ func (ec *EtaCalculator) Last() time.Time {
 }
 
 // Eta returns ETA based on total time and total processed items count
-func (ec *EtaCalculator) Eta() time.Time {
+func (ec *Calculator) Eta() time.Time {
 	if ec.processed == 0 {
 		return time.Time{}
 	}
@@ -95,7 +95,7 @@ func (ec *EtaCalculator) Eta() time.Time {
 }
 
 // Average returns ETA based on average processing speed of last periods
-func (ec *EtaCalculator) Average() time.Time {
+func (ec *Calculator) Average() time.Time {
 	if len(ec.stats) == 0 {
 		return ec.Eta()
 	}
@@ -123,7 +123,7 @@ func (ec *EtaCalculator) Average() time.Time {
 }
 
 // Optimistic returns ETA based on detected maximum of processing speed
-func (ec *EtaCalculator) Optimistic() time.Time {
+func (ec *Calculator) Optimistic() time.Time {
 	if len(ec.stats) == 0 {
 		return ec.Eta()
 	}
@@ -155,7 +155,7 @@ func (ec *EtaCalculator) Optimistic() time.Time {
 }
 
 // Pessimistic returns ETA based on detected minimum of processing speed
-func (ec *EtaCalculator) Pessimistic() time.Time {
+func (ec *Calculator) Pessimistic() time.Time {
 	if len(ec.stats) == 0 {
 		return ec.Eta()
 	}
