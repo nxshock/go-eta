@@ -19,7 +19,7 @@ import (
 func main() {
 	stepsCount := 1000
 
-	eta := eta.New(time.Minute, stepsCount)
+	eta := eta.New(stepsCount)
 
 	processed := 0
 
@@ -39,6 +39,5 @@ func main() {
 		time.Sleep(time.Second) // Update progress every second
 		fmt.Fprintf(os.Stderr, "\rProcessed %d of %d, ETA: %s", processed, stepsCount, eta.Eta().Format("15:04:05"))
 	}
-
 }
 ```
