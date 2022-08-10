@@ -87,33 +87,15 @@ func (ec *Calculator) Last() time.Time {
 	return time.Now().Add(lastPeriodSpeed * time.Duration(ec.TotalCount-ec.processed))
 }
 
-// Eta returns ETA based on total time and total processed items count
-func (ec *Calculator) Eta() time.Time {
-	if ec.processed == 0 {
-		return time.Time{}
-	}
+// cycleTime returns cycle time based on total time and total processed items count
+func (ec *Calculator) cycleTime(now time.Time) time.Duration {
+	elapsedTime := time.Since(ec.startTime)
 
-	ec.mu.RLock()
-	defer ec.mu.RUnlock()
-
-	now := time.Now()
-	elapsedTime := now.Sub(ec.startTime)
-	avgSpeed := elapsedTime / time.Duration(ec.processed)
-
-	return now.Add(avgSpeed * time.Duration(ec.TotalCount-ec.processed))
+	return elapsedTime / time.Duration(ec.processed)
 }
 
-// Average returns ETA based on average processing speed of last periods
-func (ec *Calculator) Average() time.Time {
-	if len(ec.stats) == 0 {
-		return ec.Eta()
-	}
-
-	ec.mu.RLock()
-	defer ec.mu.RUnlock()
-
-	now := time.Now()
-
+// averageCycleTime returns cycle time based on average processing speed of last periods
+func (ec *Calculator) averageCycleTime() time.Duration {
 	processed := ec.stats[len(ec.stats)-1]
 	startPeriod := ec.currentPeriod.Add(-ec.periodDuration)
 
@@ -123,25 +105,14 @@ func (ec *Calculator) Average() time.Time {
 	}
 
 	if processed == 0 {
-		return time.Time{}
+		return time.Duration(0)
 	}
 
-	avgSpeed := ec.currentPeriod.Sub(startPeriod) / time.Duration(processed)
-
-	return now.Add(time.Duration(ec.TotalCount-ec.processed) * avgSpeed)
+	return ec.currentPeriod.Sub(startPeriod) / time.Duration(processed)
 }
 
-// Optimistic returns ETA based on detected maximum of processing speed
-func (ec *Calculator) Optimistic() time.Time {
-	if len(ec.stats) == 0 {
-		return ec.Eta()
-	}
-
-	ec.mu.RLock()
-	defer ec.mu.RUnlock()
-
-	now := time.Now()
-
+// optimisticCycleTime returns cycle time based on detected maximum of processing speed
+func (ec *Calculator) optimisticCycleTime() time.Duration {
 	var maxSpeed time.Duration
 	if ec.stats[len(ec.stats)-1] > 0 {
 		maxSpeed = ec.periodDuration / time.Duration(ec.stats[len(ec.stats)-1])
@@ -160,20 +131,11 @@ func (ec *Calculator) Optimistic() time.Time {
 		}
 	}
 
-	return now.Add(time.Duration(ec.TotalCount-ec.processed) * maxSpeed)
+	return maxSpeed
 }
 
-// Pessimistic returns ETA based on detected minimum of processing speed
-func (ec *Calculator) Pessimistic() time.Time {
-	if len(ec.stats) == 0 {
-		return ec.Eta()
-	}
-
-	ec.mu.RLock()
-	defer ec.mu.RUnlock()
-
-	now := time.Now()
-
+// pessimisticCycleTime returns cycle time based on detected minimum of processing speed
+func (ec *Calculator) pessimisticCycleTime() time.Duration {
 	var minSpeed time.Duration
 	if ec.stats[len(ec.stats)-1] > 0 {
 		minSpeed = ec.periodDuration / time.Duration(ec.stats[len(ec.stats)-1])
@@ -195,5 +157,71 @@ func (ec *Calculator) Pessimistic() time.Time {
 		}
 	}
 
-	return now.Add(time.Duration(ec.TotalCount-ec.processed) * minSpeed * time.Duration(1+nulPeriods))
+	return minSpeed * time.Duration(1+nulPeriods)
+}
+
+// Eta returns ETA based on total time and total processed items count
+func (ec *Calculator) Eta() time.Time {
+	if ec.processed == 0 {
+		return time.Time{}
+	}
+
+	ec.mu.RLock()
+	defer ec.mu.RUnlock()
+
+	now := time.Now()
+	avgCycleTime := ec.cycleTime(now)
+
+	return now.Add(avgCycleTime * time.Duration(ec.TotalCount-ec.processed))
+}
+
+// Average returns ETA based on average processing speed of last periods
+func (ec *Calculator) Average() time.Time {
+	if len(ec.stats) == 0 {
+		return ec.Eta()
+	}
+
+	ec.mu.RLock()
+	defer ec.mu.RUnlock()
+
+	avgCycleTime := ec.averageCycleTime()
+	if avgCycleTime == 0 {
+		return time.Time{}
+	}
+
+	return time.Now().Add(time.Duration(ec.TotalCount-ec.processed) * avgCycleTime)
+}
+
+// Optimistic returns ETA based on detected maximum of processing speed
+func (ec *Calculator) Optimistic() time.Time {
+	if len(ec.stats) == 0 {
+		return ec.Eta()
+	}
+
+	ec.mu.RLock()
+	defer ec.mu.RUnlock()
+
+	optimisticCycleTime := ec.optimisticCycleTime()
+	if optimisticCycleTime == 0 {
+		return time.Time{}
+	}
+
+	return time.Now().Add(time.Duration(ec.TotalCount-ec.processed) * ec.optimisticCycleTime())
+}
+
+// Pessimistic returns ETA based on detected minimum of processing speed
+func (ec *Calculator) Pessimistic() time.Time {
+	if len(ec.stats) == 0 {
+		return ec.Eta()
+	}
+
+	ec.mu.RLock()
+	defer ec.mu.RUnlock()
+
+	pessimisticCycleTime := ec.pessimisticCycleTime()
+	if pessimisticCycleTime == 0 {
+		return time.Time{}
+	}
+
+	return time.Now().Add(time.Duration(ec.TotalCount-ec.processed) * pessimisticCycleTime)
 }
