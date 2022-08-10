@@ -13,6 +13,9 @@ type Calculator struct {
 	// Expected processing count
 	TotalCount int
 
+	// Number of periods to store
+	PeriodCount int
+
 	periodDuration   time.Duration
 	currentPeriod    time.Time
 	currentProcessed int
@@ -22,12 +25,18 @@ type Calculator struct {
 }
 
 // New return new ETA calculator
-func New(periodDuration time.Duration, totalCount int) *Calculator {
+func New(totalCount int) *Calculator {
+	return NewCustom(totalCount, defaultPeriodDuration)
+}
+
+// NewCustom return new ETA calculator with custom params
+func NewCustom(totalCount int, periodDuration time.Duration) *Calculator {
 	now := time.Now()
 
 	etaCalc := &Calculator{
 		startTime:      now,
 		TotalCount:     totalCount,
+		PeriodCount:    defaultPeriodCount,
 		currentPeriod:  now.Truncate(periodDuration),
 		periodDuration: periodDuration}
 
@@ -59,8 +68,8 @@ func (ec *Calculator) Increment(n int) {
 		ec.currentPeriod = period
 	}
 
-	if len(ec.stats) > 10 {
-		ec.stats = ec.stats[:10]
+	if len(ec.stats) > ec.PeriodCount {
+		ec.stats = ec.stats[:ec.PeriodCount]
 	}
 }
 
